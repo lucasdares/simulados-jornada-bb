@@ -1,0 +1,6 @@
+{
+  "name": "Jornada BB - Simulados Gratuitos",
+  "description": "Mini app de simulados gratuitos para candidatos do Banco do Brasil com gabarito pelo WhatsApp e cronômetro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

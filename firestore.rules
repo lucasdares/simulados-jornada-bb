@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (Default Deny Catches All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Reusable Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'dareslucas@gmail.com' || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    // Entities Validation Blueprints
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'nome', 'email', 'createdAt', 'lastLoginAt', 'acceptedTerms']) &&
+             data.uid is string && data.uid.size() <= 128 &&
+             data.nome is string && data.nome.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.createdAt is string &&
+             data.lastLoginAt is string &&
+             data.acceptedTerms is bool;
+    }
+    
+    function isValidAttempt(data) {
+      return data.keys().hasAll(['userId', 'userName', 'userEmail', 'simuladoId', 'startedAt', 'answers', 'totalAnswered', 'score', 'timeSpent', 'status', 'whatsappClicked']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() <= 100 &&
+             data.userEmail is string && data.userEmail.size() <= 100 &&
+             data.simuladoId is string && data.simuladoId.size() <= 20 &&
+             data.totalAnswered is number &&
+             data.score is number &&
+             data.timeSpent is number &&
+             data.status is string && (data.status == 'started' || data.status == 'submitted') &&
+             data.whatsappClicked is bool;
+    }
+    
+    function isValidEvent(data) {
+      return data.keys().hasAll(['userId', 'eventName', 'createdAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.eventName is string && data.eventName.size() <= 50 &&
+             data.createdAt is string;
+    }
+    
+    // Collections Gated Nodes
+    
+    // 1. Users Path
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // Avoid standard users scraping directory listings
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['nome', 'telefone', 'lastLoginAt'])
+      );
+    }
+    
+    // 2. Attempts Path
+    match /attempts/{attemptId} {
+      allow get: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidAttempt(incoming());
+      allow update: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin()) && isValidAttempt(incoming()) && (
+        // Action A: In progress saving answers & time
+        (existing().status == 'started' && incoming().status == 'started' && incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'totalAnswered', 'timeSpent'])) ||
+        // Action B: Complete/Submit Attempt
+        (existing().status == 'started' && incoming().status == 'submitted' && incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'totalAnswered', 'score', 'scoreBySubject', 'timeSpent', 'status', 'submittedAt'])) ||
+        // Action C: Click WhatsApp redirect
+        (incoming().diff(existing()).affectedKeys().hasOnly(['whatsappClicked']))
+      );
+    }
+    
+    // 3. Events Path
+    match /events/{eventId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidEvent(incoming());
+      allow update, delete: if false; // Audit logs are immutable
+    }
+  }
+}

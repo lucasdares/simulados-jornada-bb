@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account registration and metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nome": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "telefone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLoginAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "utm_source": { "type": "string" },
+        "utm_campaign": { "type": "string" },
+        "utm_content": { "type": "string" },
+        "acceptedTerms": { "type": "boolean" }
+      },
+      "required": ["uid", "nome", "email", "createdAt", "lastLoginAt", "acceptedTerms"]
+    },
+    "ExamAttempt": {
+      "title": "Exam Attempt",
+      "description": "Log of a single mock-exam attempt taken by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string", "format": "email" },
+        "simuladoId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "answers": { "type": "object" },
+        "totalAnswered": { "type": "number" },
+        "score": { "type": "number" },
+        "scoreBySubject": { "type": "object" },
+        "timeSpent": { "type": "number" },
+        "status": { "type": "string", "enum": ["started", "submitted"] },
+        "whatsappClicked": { "type": "boolean" }
+      },
+      "required": ["userId", "userName", "userEmail", "simuladoId", "startedAt", "answers", "totalAnswered", "score", "timeSpent", "status", "whatsappClicked"]
+    },
+    "EventLog": {
+      "title": "System Event Log",
+      "description": "Telemetry of page flow events",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["userId", "eventName", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles indexed by their authentication UID"
+    },
+    "/attempts/{attemptId}": {
+      "schema": "ExamAttempt",
+      "description": "Exam attempts written during exam sessions"
+    },
+    "/events/{eventId}": {
+      "schema": "EventLog",
+      "description": "Application events logged by participants"
+    }
+  }
+}
