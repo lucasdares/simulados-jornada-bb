@@ -40,15 +40,55 @@ export const supabaseConfigError = null;
 // Maintain compatibility with existing references to supabaseClient
 const supabaseClient = supabase;
 
-// We strictly disable any fake or local mode to avoid interference with live users
-export const isLocalStorageMode = false;
+// Support dynamic activation of LocalStorage Mode if Supabase is offline or forced
+function getLocal<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (e) {
+    console.warn(`Error reading localStorage key "${key}":`, e);
+    return defaultValue;
+  }
+}
+
+function setLocal<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn(`Error writing localStorage key "${key}":`, e);
+  }
+}
+
+let localMode = false;
+if (typeof window !== 'undefined') {
+  localMode = localStorage.getItem('jornada_bb_use_local_mode') === 'true';
+  
+  // Default to true if using the filed domain and not explicitly set to false
+  if (supabaseUrl.includes('kpkqaqdcuuviqwkstej') && localStorage.getItem('jornada_bb_use_local_mode') === null) {
+    console.warn("Detectou-se o domínio Supabase inativo/pausado 'kpkqaqdcuuviqwkstej'. Ativando o Modo Local/Offline por padrão para evitar travamento.");
+    localStorage.setItem('jornada_bb_use_local_mode', 'true');
+    localMode = true;
+  }
+}
+
+export let isLocalStorageMode = localMode;
 
 export function forceLocalStorageMode() {
-  console.log("forceLocalStorageMode está desativado. Rodando em modo Supabase puro.");
+  localStorage.setItem('jornada_bb_use_local_mode', 'true');
+  isLocalStorageMode = true;
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
 }
 
 export function restoreFirebaseMode() {
-  console.log("restoreFirebaseMode está desativado. Rodando em modo Supabase puro.");
+  localStorage.removeItem('jornada_bb_use_local_mode');
+  isLocalStorageMode = false;
+  if (typeof window !== 'undefined') {
+    window.location.reload();
+  }
 }
 
 // Keep a backward compatible name
@@ -66,9 +106,29 @@ function handleSupabaseError(error: unknown, operationType: OperationType, path:
   throw new Error(rawMsg || 'Unknown Supabase Error');
 }
 
+const authCallbacks: ((user: User | null) => void)[] = [];
+
 export const dbService = {
   // Authentication Actions
   onAuthStateChange(callback: (user: User | null) => void) {
+    if (isLocalStorageMode) {
+      authCallbacks.push(callback);
+      const guest = localStorage.getItem('jornada_bb_current_user');
+      if (guest) {
+        try {
+          callback(JSON.parse(guest));
+        } catch (e) {
+          callback(null);
+        }
+      } else {
+        callback(null);
+      }
+      return () => {
+        const idx = authCallbacks.indexOf(callback);
+        if (idx > -1) authCallbacks.splice(idx, 1);
+      };
+    }
+
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: string, session: any) => {
       if (!session?.user) {
         callback(null);
@@ -121,6 +181,28 @@ export const dbService = {
     console.log("KEY:", !!import.meta.env.VITE_SUPABASE_ANON_KEY)
     console.log("- Target email:", profile.email);
     console.log("=================================================");
+
+    if (isLocalStorageMode) {
+      const users = getLocal<User[]>('jornada_bb_users', []);
+      const existing = users.find(u => u.email.toLowerCase() === profile.email.toLowerCase());
+      if (existing) {
+        throw new Error("Este e-mail já está cadastrado no simulador local.");
+      }
+      const newUid = `user_${Math.random().toString(36).substr(2, 9)}`;
+      const newUser: User = {
+        ...profile,
+        uid: newUid,
+        createdAt: timestamp,
+        lastLoginAt: timestamp,
+      };
+      users.push(newUser);
+      setLocal('jornada_bb_users', users);
+      setLocal('jornada_bb_current_user', newUser);
+      
+      // Trigger callbacks
+      authCallbacks.forEach(cb => cb(newUser));
+      return newUser;
+    }
 
     try {
       console.log(">>> CALLING supabaseClient.auth.signUp()");
@@ -181,6 +263,25 @@ export const dbService = {
     console.log("- Target email:", email);
     console.log("=================================================");
 
+    if (isLocalStorageMode) {
+      const users = getLocal<User[]>('jornada_bb_users', []);
+      const userObj = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!userObj) {
+        throw new Error("E-mail não cadastrado no Simulador Local. Por favor, faça o cadastro primeiro.");
+      }
+      const updatedUser = {
+        ...userObj,
+        lastLoginAt: timestamp
+      };
+      const updatedUsers = users.map(u => u.uid === updatedUser.uid ? updatedUser : u);
+      setLocal('jornada_bb_users', updatedUsers);
+      setLocal('jornada_bb_current_user', updatedUser);
+      
+      // Trigger callbacks
+      authCallbacks.forEach(cb => cb(updatedUser));
+      return updatedUser;
+    }
+
     try {
       const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
         email: email.trim(),
@@ -237,11 +338,21 @@ export const dbService = {
   },
 
   async signOut() {
+    if (isLocalStorageMode) {
+      localStorage.removeItem('jornada_bb_current_user');
+      authCallbacks.forEach(cb => cb(null));
+      return;
+    }
     await supabaseClient.auth.signOut();
   },
 
   // Attempt Management Options
   async getAttempts(userId: string): Promise<ExamAttempt[]> {
+    if (isLocalStorageMode) {
+      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      return attempts.filter(a => a.userId === userId);
+    }
+
     try {
       const { data, error } = await supabaseClient
         .from('attempts')
@@ -279,6 +390,14 @@ export const dbService = {
       whatsappClicked: false,
     };
 
+    if (isLocalStorageMode) {
+      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      attempts.push(newAttempt);
+      setLocal('jornada_bb_attempts', attempts);
+      await this.logAppEvent(userId, 'simulado_started', { attemptId, simuladoId });
+      return newAttempt;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('attempts')
@@ -299,6 +418,18 @@ export const dbService = {
   async saveAnswers(attemptId: string, answers: Record<number, string>, timeSpent: number): Promise<void> {
     const totalAnswered = Object.keys(answers).length;
     
+    if (isLocalStorageMode) {
+      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      const index = attempts.findIndex(a => a.id === attemptId);
+      if (index > -1) {
+        attempts[index].answers = answers;
+        attempts[index].totalAnswered = totalAnswered;
+        attempts[index].timeSpent = timeSpent;
+        setLocal('jornada_bb_attempts', attempts);
+      }
+      return;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('attempts')
@@ -327,6 +458,25 @@ export const dbService = {
     const timestamp = new Date().toISOString();
     const totalAnswered = Object.keys(answers).length;
     
+    if (isLocalStorageMode) {
+      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      const index = attempts.findIndex(a => a.id === attemptId);
+      let userId = 'unknown';
+      if (index > -1) {
+        attempts[index].answers = answers;
+        attempts[index].totalAnswered = totalAnswered;
+        attempts[index].score = score;
+        attempts[index].scoreBySubject = scoreBySubject;
+        attempts[index].timeSpent = timeSpent;
+        attempts[index].status = 'submitted';
+        attempts[index].submittedAt = timestamp;
+        userId = attempts[index].userId;
+        setLocal('jornada_bb_attempts', attempts);
+      }
+      await this.logAppEvent(userId, 'simulado_submitted', { attemptId, score, timeSpent });
+      return;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('attempts')
@@ -360,6 +510,19 @@ export const dbService = {
   },
 
   async clickWhatsapp(attemptId: string): Promise<void> {
+    if (isLocalStorageMode) {
+      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      const index = attempts.findIndex(a => a.id === attemptId);
+      let userId = 'unknown';
+      if (index > -1) {
+        attempts[index].whatsappClicked = true;
+        userId = attempts[index].userId;
+        setLocal('jornada_bb_attempts', attempts);
+      }
+      await this.logAppEvent(userId, 'whatsapp_offer_clicked', { attemptId });
+      return;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('attempts')
@@ -398,6 +561,13 @@ export const dbService = {
       metadata: metadata || null,
     };
     
+    if (isLocalStorageMode) {
+      const events = getLocal<EventLog[]>('jornada_bb_events', []);
+      events.push(eventObj);
+      setLocal('jornada_bb_events', events);
+      return;
+    }
+
     try {
       await supabaseClient
         .from('events')
@@ -409,6 +579,23 @@ export const dbService = {
 
   // Admin Portal Stats
   async getAdminData(): Promise<AdminStats> {
+    if (isLocalStorageMode) {
+      const localUsers = getLocal<User[]>('jornada_bb_users', []);
+      const localAttempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+      const totalStarted = localAttempts.length;
+      const totalSubmitted = localAttempts.filter(a => a.status === 'submitted').length;
+      const totalWhatsappClicks = localAttempts.filter(a => a.whatsappClicked).length;
+      
+      return {
+        totalUsers: localUsers.length,
+        totalStarted,
+        totalSubmitted,
+        totalWhatsappClicks,
+        users: localUsers,
+        attempts: localAttempts
+      };
+    }
+
     try {
       const [usersRes, attemptsRes] = await Promise.all([
         supabaseClient.from('users').select('*'),

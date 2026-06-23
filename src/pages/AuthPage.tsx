@@ -9,10 +9,11 @@ import { Mail, Lock, User, Phone, CheckCircle, ArrowLeft, AlertCircle } from 'lu
 interface AuthPageProps {
   onBack: () => void;
   onSuccess: (userProfile: any) => void;
+  onGoToDiagnostic: () => void;
   initialMode?: 'register' | 'login';
 }
 
-export default function AuthPage({ onBack, onSuccess, initialMode = 'register' }: AuthPageProps) {
+export default function AuthPage({ onBack, onSuccess, onGoToDiagnostic, initialMode = 'register' }: AuthPageProps) {
   const [mode, setMode] = useState<'register' | 'login'>(initialMode);
   
   // Form fields
@@ -174,10 +175,19 @@ export default function AuthPage({ onBack, onSuccess, initialMode = 'register' }
           </h2>
 
           {errorMessage && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 text-sm p-4 rounded-xl flex flex-col gap-3 mb-5">
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400 text-sm p-4 rounded-xl flex flex-col gap-2 mb-5">
               <div className="flex items-start gap-2.5">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMessage}</span>
+              </div>
+              <div className="mt-1 pt-1.5 border-t border-red-100 dark:border-red-900/30 text-right">
+                <button
+                  type="button"
+                  onClick={onGoToDiagnostic}
+                  className="text-xs font-mono font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                >
+                  Diagnóstico de Rede &rarr;
+                </button>
               </div>
             </div>
           )}

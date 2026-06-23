@@ -6,16 +6,18 @@ import ExamInstructions from './pages/ExamInstructions';
 import ExamPage from './pages/ExamPage';
 import ResultOfferPage from './pages/ResultOfferPage';
 import AdminPage from './pages/AdminPage';
+import DiagnosticPage from './pages/DiagnosticPage';
 import { dbService } from './firebase';
 import { User, ExamAttempt } from './types';
 import { Loader2, Shield } from 'lucide-react';
 import { Button } from './components/Button';
 
-type Screen = 'landing' | 'auth' | 'dashboard' | 'instructions' | 'exam' | 'result' | 'admin';
+type Screen = 'landing' | 'auth' | 'dashboard' | 'instructions' | 'exam' | 'result' | 'admin' | 'diagnostic';
 
 export default function App() {
   // Navigation State
   const [screen, setScreen] = useState<Screen>('landing');
+  const [prevScreen, setPrevScreen] = useState<Screen>('landing');
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
 
   // Authenticated Profile State
@@ -177,6 +179,10 @@ export default function App() {
             setScreen('auth');
           }}
           onGoToAdmin={() => setScreen('admin')}
+          onGoToDiagnostic={() => {
+            setPrevScreen('landing');
+            setScreen('diagnostic');
+          }}
         />
       );
 
@@ -188,6 +194,10 @@ export default function App() {
           onSuccess={(profile) => {
             setCurrentUser(profile);
             setScreen('dashboard');
+          }}
+          onGoToDiagnostic={() => {
+            setPrevScreen('auth');
+            setScreen('diagnostic');
           }}
         />
       );
@@ -253,6 +263,13 @@ export default function App() {
               setScreen('landing');
             }
           }}
+        />
+      );
+
+    case 'diagnostic':
+      return (
+        <DiagnosticPage 
+          onBack={() => setScreen(prevScreen)}
         />
       );
 

@@ -10,9 +10,10 @@ interface LandingPageProps {
   onStart: () => void;
   onGoToLogin: () => void;
   onGoToAdmin: () => void;
+  onGoToDiagnostic: () => void;
 }
 
-export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: LandingPageProps) {
+export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin, onGoToDiagnostic }: LandingPageProps) {
   const benefits = [
     {
       icon: <ShieldCheck className="w-6 h-6 text-bb-cyan" />,
@@ -148,12 +149,20 @@ export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: Landi
           <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
             © 2026 Jornada BB. Todos os direitos reservados. Este aplicativo é um simulado autoral e não possui filiação direta ou jurídica com o Banco do Brasil S.A.
           </p>
-          <button 
-            onClick={onGoToAdmin} 
-            className="text-[10px] text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 font-mono tracking-wider uppercase border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
-          >
-            Acesso Admin
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={onGoToDiagnostic} 
+              className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 font-mono tracking-wider uppercase border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
+            >
+              Diagnóstico de Rede
+            </button>
+            <button 
+              onClick={onGoToAdmin} 
+              className="text-[10px] text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 font-mono tracking-wider uppercase border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
+            >
+              Acesso Admin
+            </button>
+          </div>
         </div>
       </footer>
     </div>
