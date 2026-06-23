@@ -3,7 +3,7 @@ import Logo from '../components/Logo';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import ThemeToggle from '../components/ThemeToggle';
-import { dbService, forceLocalStorageMode, isLocalStorageMode, restoreSupabaseMode } from '../firebase';
+import { dbService } from '../firebase';
 import { Mail, Lock, User, Phone, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 
 interface AuthPageProps {
@@ -167,31 +167,6 @@ export default function AuthPage({ onBack, onSuccess, initialMode = 'register' }
           </p>
         </div>
 
-        {/* Local Storage Mode Override Indicator with Reactivation Switch */}
-        {isLocalStorageMode && (
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-400 text-xs p-4 rounded-2xl flex flex-col items-center gap-3.5 mb-6 shadow-xs text-center">
-            <div className="flex flex-col items-center gap-1.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-              <p className="font-extrabold text-[13px] text-amber-700 dark:text-amber-400 leading-tight">
-                Modo Offline (Local Storage) Ativo!
-              </p>
-              <p className="text-slate-500 dark:text-slate-450 leading-relaxed max-w-xs leading-normal">
-                Sua sessão de respostas e cadastros estão limitados ao seu navegador atual.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => restoreSupabaseMode()}
-              className="w-full text-center bg-[#0057A8] hover:bg-[#004b91] text-white text-[11px] font-black px-4 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer uppercase tracking-wider"
-            >
-              🔄 Conectar ao Supabase (Modo Online Cloud)
-            </button>
-          </div>
-        )}
-
         {/* Auth Box Container */}
         <Card variant="premium" className="shadow-2xl border-slate-200/80 dark:border-slate-800 relative overflow-hidden">
           <h2 className="font-display font-extrabold text-2xl text-[#0057A8] dark:text-[#00A6D6] tracking-tight mb-6 text-center">
@@ -204,44 +179,6 @@ export default function AuthPage({ onBack, onSuccess, initialMode = 'register' }
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMessage}</span>
               </div>
-              
-              {!isLocalStorageMode && (
-                <div className="mt-1 pt-2 border-t border-red-200/55 dark:border-red-900/35 flex flex-col gap-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    Está com dificuldades de autenticação? Ative o <strong>Modo de Simulado Local</strong> para criar sua conta instantaneamente e iniciar seus estudos agora mesmo sem depender de servidores.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      forceLocalStorageMode();
-                      setLoading(true);
-                      setErrorMessage(null);
-                      try {
-                        const utms = getUTMs();
-                        const profile = {
-                          nome: name || 'Candidato Excelência',
-                          email: (email || 'candidato@jornadabb.com').trim(),
-                          telefone: (phone || '553298185214').trim(),
-                          source: utms.utm_source,
-                          utm_source: utms.utm_source,
-                          utm_campaign: utms.utm_campaign,
-                          utm_content: utms.utm_content,
-                          acceptedTerms: true
-                        };
-                        const newUser = await dbService.signUp(profile, password || 'senha123');
-                        onSuccess(newUser);
-                      } catch (localErr: any) {
-                        setErrorMessage(`Erro ao criar conta local: ${localErr.message || localErr}`);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="w-full text-center bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white text-xs font-extrabold px-3 py-2.5 rounded-lg transition-all shadow-sm hover:shadow-xs cursor-pointer uppercase tracking-wider"
-                  >
-                    🚀 Ativar Modo Local e Criar Conta Imediatamente
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
