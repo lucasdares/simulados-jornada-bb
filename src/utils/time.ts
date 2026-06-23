@@ -11,19 +11,7 @@ export function getExamTimes() {
 }
 
 export function getExamStatus(userEmail?: string): ExamStatus {
-  if (userEmail?.toLowerCase() === 'dareslucas@gmail.com') {
-    return 'available';
-  }
-  const now = Date.now();
-  const { releaseTime, deadlineTime } = getExamTimes();
-
-  if (now < releaseTime) {
-    return 'blocked';
-  } else if (now >= releaseTime && now <= deadlineTime) {
-    return 'available';
-  } else {
-    return 'expired';
-  }
+  return 'available';
 }
 
 export function formatTimeRemaining(ms: number) {

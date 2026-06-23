@@ -105,21 +105,26 @@ export default function ResultOfferPage({ attempt, onGoToDashboard }: ResultOffe
         </Card>
 
         {/* Breakdown by subject list */}
-        <Card variant="default" className="p-6 md:p-8 bg-white border-slate-200 shadow-sm rounded-2xl">
-          <h3 className="font-display font-black text-lg text-slate-800 mb-6 uppercase tracking-tight border-b border-slate-100 pb-3 flex items-center gap-2">
-            📊 Desempenho detalhado por Disciplina
-          </h3>
+        <Card variant="default" className="p-6 md:p-8 bg-white border-slate-205 shadow-sm rounded-2xl">
+          <div className="border-b border-slate-100 pb-4 mb-6">
+            <h3 className="font-display font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight flex items-center gap-2.5">
+              <Trophy className="w-5.5 h-5.5 text-amber-500 shrink-0" />
+              Rendimento por Área de Conhecimento
+            </h3>
+            <p className="text-slate-450 text-xs sm:text-sm mt-1 font-medium">
+              Detalhamento de acertos e desempenho percentual em cada tópico cobrado no programa.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {attempt.scoreBySubject && Object.entries(attempt.scoreBySubject).map(([subject, stats]) => {
               const pct = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-              const iconBgClass = subjectIcons[subject] || "bg-slate-50 text-slate-500 border border-slate-100";
               
               return (
-                <div key={subject} className="bg-slate-50 p-4 rounded-xl border border-slate-150 flex items-center justify-between gap-4 shadow-2xs">
+                <div key={subject} className="bg-[#f8fafc] p-4 rounded-xl border border-slate-200/60 flex items-center justify-between gap-4 shadow-3xs">
                   <div className="flex-grow">
                     <p className="text-sm font-bold text-slate-800 leading-tight">{subject}</p>
-                    <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden border border-slate-200">
+                    <div className="w-full bg-slate-200/70 h-2 rounded-full mt-2.5 overflow-hidden">
                       <div 
                         className="bg-gradient-to-r from-[#00A6D6] to-[#0057A8] h-full rounded-full transition-all"
                         style={{ width: `${pct}%` }}
@@ -127,7 +132,7 @@ export default function ResultOfferPage({ attempt, onGoToDashboard }: ResultOffe
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-extrabold text-slate-800">{stats.correct} de {stats.total}</p>
+                    <p className="text-sm font-extrabold text-[#0057A8]">{stats.correct} de {stats.total}</p>
                     <p className="text-[10px] uppercase font-bold text-slate-400 mt-1 font-mono">{pct}% corretas</p>
                   </div>
                 </div>
@@ -135,55 +140,59 @@ export default function ResultOfferPage({ attempt, onGoToDashboard }: ResultOffe
             })}
           </div>
 
-          <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500 leading-relaxed font-sans font-medium">
-            🚫 <strong>Gabarito Bloqueado:</strong> Conforme as diretrizes institucionais, a correção individualizada comentada alternativa por alternativa não é exibida na plataforma. Seus acertos já estão computados e o PDF pedagógico de resoluções completas é fornecido no WhatsApp.
+          {/* Gabarito disponível no WhatsApp box */}
+          <div className="mt-8 p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-center text-xs text-amber-900 leading-relaxed font-sans font-medium flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+            <span>
+              <strong>Gabarito disponível no WhatsApp!</strong> Clique no link abaixo para liberar o acesso ao PDF com as resoluções comentadas detalhadamente e receber o cronograma de estudos tático.
+            </span>
           </div>
         </Card>
 
         {/* Special workbook Offer section */}
-        <Card variant="premium" className="p-6 md:p-8 relative overflow-hidden border-[#E5A900] bg-white rounded-2xl shadow-xl">
+        <Card variant="premium" className="p-6 md:p-8 relative overflow-hidden border border-amber-200/50 bg-gradient-to-br from-white via-white to-amber-50/10 rounded-2xl shadow-xl">
           {/* Subtle gold ray effect */}
           <div className="absolute top-0 right-0 w-48 h-48 bg-[#E5A900]/5 rounded-full blur-3xl pointer-events-none"></div>
           
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-bold bg-[#E5A900]/10 text-[#C48C00] border border-[#E5A900]/25 mb-6 uppercase tracking-wider">
-            <Gift className="w-3.5 h-3.5" /> OFERTA ESPECIAL PARA QUEM FEZ O SIMULADO
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20 mb-6 uppercase tracking-wider">
+            <Gift className="w-3.5 h-3.5 text-amber-600" /> OFERTA ESPECIAL PARA VOCÊ
           </div>
 
-          <h2 className="font-display font-black text-2xl sm:text-3xl text-[#0057A8] tracking-tight mb-4">
-            Jornada BB + Cronograma Atualizado
+          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 tracking-tight leading-tight mb-4">
+            Método Jornada BB — <span className="bg-gradient-to-r from-[#0057A8] to-[#00A6D6] bg-clip-text text-transparent">Cronograma Tático de Elite</span>
           </h2>
           
-          <p className="text-slate-650 text-sm sm:text-base font-medium leading-relaxed mb-6">
-            Você acabou de ver que estudar para o Banco do Brasil sem direção pode deixar o seu caminho muito mais desafiador. Ficar perdido nas matérias ou sem saber como organizar seus cronômetros de revisão é o que reprova a maioria.
+          <p className="text-slate-600 text-sm sm:text-base font-medium leading-relaxed mb-4">
+            Estudar para o Banco do Brasil sem uma direção clara é o principal motivo de reprovações. Ficar perdido em excesso de PDFs ou sem saber como organizar seus ciclos de revisão torna tudo muito mais desafiador.
           </p>
-          <p className="text-slate-650 text-sm sm:text-base font-medium leading-relaxed mb-8">
-            Quem finaliza o simulado hoje tem o direito exclusivo de acessar a <strong className="text-[#C48C00] font-extrabold">Plataforma Jornada BB</strong> completa com nosso novo cronograma tático atualizado por condições extremamente especiais. Comece a sua preparação de alto nível agora mesmo:
+          <p className="text-slate-600 text-sm sm:text-base font-medium leading-relaxed mb-6">
+            Por ter finalizado este simulado hoje, você tem o direito de resgatar uma condição especial exclusiva para acessar a plataforma <strong className="text-amber-600 font-extrabold font-sans">Jornada BB</strong> completa, acompanhada do nosso cronograma estratégico 100% atualizado.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">Plano de estudos diário</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-8">
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">Plano de Estudos Inteligente Diário</p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">Cronograma atualizado pós-edital</p>
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">Cronograma Tático Pós-Edital</p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">PDFs de resumos direcionados</p>
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">PDFs de Resumos Direcionados</p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">Simulados autorais exclusivos</p>
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">Simulados Inéditos Comentados</p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">Treinamento específico de Redação</p>
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">Treinamento específico de Redação</p>
             </div>
-            <div className="flex items-start gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#00A6D6]/10 text-[#00A6D6] flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5">✓</span>
-              <p className="text-sm font-semibold text-slate-700">Organização clara por matérias</p>
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-150 transition-all hover:bg-white hover:border-slate-300">
+              <span className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 font-extrabold text-xs">✓</span>
+              <p className="text-xs sm:text-sm font-bold text-slate-700">Acompanhamento e Mentoria Ativa</p>
             </div>
           </div>
 
@@ -194,14 +203,15 @@ export default function ResultOfferPage({ attempt, onGoToDashboard }: ResultOffe
               size="xl"
               onClick={handleWhatsappRedirect}
               loading={loading}
-              className="py-4 text-base tracking-wide bg-[#25D366] hover:bg-[#20ba59] text-white hover:brightness-105 border-none font-extrabold flex justify-center gap-3 drop-shadow-md cursor-pointer transition-all duration-150"
+              className="py-4 w-full text-sm sm:text-base tracking-wide bg-[#25D366] hover:bg-[#20ba59] text-white hover:brightness-105 border-none font-extrabold flex justify-center items-center gap-3 shadow-md cursor-pointer transition-all duration-300 rounded-xl"
             >
-              <MessageCircle className="w-5 h-5 text-white fill-current" />
-              QUERO ACESSAR A JORNADA BB E RECEBER O GABARITO
+              <MessageCircle className="w-5 h-5 text-white fill-current shrink-0 animate-bounce" />
+              <span>ACESSAR JORNADA BB E RECEBER GABARITO NO WHATSAPP</span>
             </Button>
             
-            <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5">
-              <span>●</span> O GABARITO E AS RESPOSTAS COMENTADAS ESTARÃO DISPONÍVEIS NO WHATSAPP
+            <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+              O gabarito oficial de resolução será liberado diretamente no WhatsApp
             </p>
           </div>
         </Card>

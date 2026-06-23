@@ -32,11 +32,11 @@ export function Button({
 
   const variants = {
     primary: 'bg-[#E5A900] text-white hover:bg-[#C99600] shadow-lg shadow-[#E5A900]/20 font-bold',
-    secondary: 'bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200/80',
-    accent: 'bg-[#0057A8] text-white hover:bg-[#062B61]/90 shadow-md shadow-[#0057A8]/10',
-    outline: 'bg-transparent border-2 border-slate-300 text-slate-700 hover:bg-slate-50',
-    danger: 'bg-red-50 text-red-600 hover:bg-red-100/80 border border-red-100',
-    ghost: 'bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100',
+    secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700',
+    accent: 'bg-[#0057A8] dark:bg-[#006bd1] text-white hover:bg-[#062B61]/90 dark:hover:bg-blue-500 shadow-md shadow-[#0057A8]/10',
+    outline: 'bg-transparent border-2 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800',
+    danger: 'bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 hover:bg-red-100/80 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900',
+    ghost: 'bg-transparent text-slate-550 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800',
   };
 
   const sizes = {

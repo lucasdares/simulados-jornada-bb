@@ -17,7 +17,7 @@ export default function AdminPage({ onBack, currentUser }: AdminPageProps) {
   const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (currentUser?.email?.toLowerCase() === 'dareslucas@gmail.com') {
+    if (currentUser?.email && ['dareslucas@gmail.com', 'guilhermeamiti007@gmail.com'].includes(currentUser.email.toLowerCase())) {
       setIsAuthenticated(true);
     }
   }, [currentUser]);

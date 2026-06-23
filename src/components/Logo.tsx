@@ -99,7 +99,7 @@ export default function Logo({ className = '', size = 'md', showText = true }: L
 
       {showText && (
         <div className="flex flex-col">
-          <span className={`font-display font-bold tracking-tight uppercase leading-none text-white ${currentSize.text}`}>
+          <span className={`font-display font-bold tracking-tight uppercase leading-none text-slate-900 dark:text-white ${currentSize.text}`}>
             Jornada <span className="text-bb-yellow">BB</span>
           </span>
           <span className="font-sans text-[10px] tracking-widest uppercase font-semibold text-bb-cyan leading-none mt-0.5">

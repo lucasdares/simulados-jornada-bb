@@ -2,7 +2,9 @@ import React from 'react';
 import Logo from '../components/Logo';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { CheckCircle, ShieldCheck, Flame, CalendarClock, MessageCircleCode, ArrowRight } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
+import { WHATSAPP_NUMBER } from '../firebase';
+import { CheckCircle, ShieldCheck, Flame, CalendarClock, MessageCircleCode, ArrowRight, BookOpen } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -35,19 +37,34 @@ export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: Landi
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#f8fafc] text-slate-800 flex flex-col justify-between">
+    <div className="min-h-screen relative overflow-hidden bg-[#f8fafc] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-300">
       {/* Visual background flares */}
       <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#0057A8]/5 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-0 w-[400px] h-[400px] bg-[#00A6D6]/4 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute top-1/2 left-0 w-[300px] h-[300px] bg-[#E5A900]/3 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Top Navbar */}
-      <header className="relative z-10 w-full border-b border-slate-200 bg-white shadow-xs px-6 py-4">
+      <header className="relative z-10 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 backdrop-blur-md px-6 py-4 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Logo size="md" />
-          <Button variant="ghost" size="sm" onClick={onGoToLogin} className="text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50">
-            Acessar Painel
-          </Button>
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                const text = encodeURIComponent("Olá! Gostaria de receber os gabaritos da Jornada BB.");
+                window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
+              }}
+              className="border-emerald-300 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs font-bold shadow-xs flex items-center gap-1.5 shrink-0"
+            >
+              <BookOpen className="w-4 h-4 text-emerald-500" />
+              <span className="hidden sm:inline">Gabaritos</span>
+            </Button>
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" onClick={onGoToLogin} className="text-slate-600 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-xs">
+              Acessar Painel
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -59,12 +76,12 @@ export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: Landi
             ★ Simulado Exclusivo Banco do Brasil
           </div>
           
-          <h1 className="font-display font-extrabold text-slate-900 text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-tight mb-6">
+          <h1 className="font-display font-extrabold text-slate-900 dark:text-white text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-tight mb-6">
             Descubra se você está estudando na <span className="bg-linear-to-r from-[#0057A8] to-[#00A6D6] bg-clip-text text-transparent">direção certa</span>.
           </h1>
           
-          <p className="text-slate-600 text-lg sm:text-xl leading-relaxed mb-8 max-w-2xl mx-auto lg:mx-0">
-            Realize um simulado autoral gratuito no estilo <strong className="text-slate-900 font-bold">Cesgranrio</strong> para Escriturário (Agente Comercial) e obtenha clareza imediata sobre sua preparação.
+          <p className="text-slate-600 dark:text-slate-350 text-lg sm:text-xl leading-relaxed mb-8 max-w-2xl mx-auto lg:mx-0">
+            Realize um simulado autoral gratuito no estilo <strong className="text-slate-900 dark:text-white font-black">Cesgranrio</strong> para Escriturário (Agente Comercial) e obtenha clareza imediata sobre sua preparação.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -95,27 +112,27 @@ export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: Landi
 
         {/* Right Benefits Column - Bento Presentation */}
         <div className="flex-1 w-full max-w-xl">
-          <Card variant="premium" className="p-8 border border-slate-200/80 relative overflow-hidden shadow-2xl">
+          <Card variant="premium" className="p-8 border border-slate-200/80 dark:border-slate-800 relative overflow-hidden shadow-2xl">
             {/* Gloss light accent */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#00A6D6]/5 to-transparent p-4 opacity-50"></div>
             
-            <h2 className="font-display font-bold text-slate-800 text-2xl tracking-tight mb-6 text-center lg:text-left">
+            <h2 className="font-display font-bold text-slate-800 dark:text-slate-100 text-2xl tracking-tight mb-6 text-center lg:text-left">
               Regras e Benefícios da Prova
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {benefits.map((b, idx) => (
-                <div key={idx} className="flex flex-col items-start p-4 rounded-xl bg-slate-50 border border-slate-150">
-                  <div className="mb-3 p-2 bg-white rounded-lg border border-slate-200 text-[#0057A8]">
+                <div key={idx} className="flex flex-col items-start p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-150 dark:border-slate-800">
+                  <div className="mb-3 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-[#0057A8] dark:text-[#00A6D6]">
                     {b.icon}
                   </div>
-                  <h3 className="font-bold text-slate-700 text-sm mb-1">{b.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">{b.description}</p>
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm mb-1">{b.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{b.description}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+            <div className="mt-8 pt-6 border-t border-slate-201 dark:border-slate-800 text-center">
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
                 Gabarito completo e cronograma estratégico atualizado serão liberados pelo WhatsApp após submissão de respostas.
               </p>
@@ -125,15 +142,15 @@ export default function LandingPage({ onStart, onGoToLogin, onGoToAdmin }: Landi
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-200 bg-white py-8 px-6 text-center shadow-inner">
+      <footer className="relative z-10 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-8 px-6 text-center shadow-inner">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <Logo size="sm" showText={true} className="opacity-90 transition-all" />
-          <p className="text-xs text-slate-400 font-medium">
+          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
             © 2026 Jornada BB. Todos os direitos reservados. Este aplicativo é um simulado autoral e não possui filiação direta ou jurídica com o Banco do Brasil S.A.
           </p>
           <button 
             onClick={onGoToAdmin} 
-            className="text-[10px] text-slate-400 hover:text-slate-650 font-mono tracking-wider uppercase border border-slate-200 px-2.5 py-1 rounded hover:bg-slate-50 shrink-0"
+            className="text-[10px] text-slate-400 hover:text-slate-650 dark:hover:text-slate-300 font-mono tracking-wider uppercase border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
           >
             Acesso Admin
           </button>
