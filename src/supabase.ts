@@ -27,14 +27,71 @@ interface SupabaseErrorInfo {
 
 // Retrieve configuration from Vite bundle/secrets
 // @ts-ignore
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const rawSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 // @ts-ignore
-const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const rawSupabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('SUPABASE URL:', rawSupabaseUrl);
+console.log('SUPABASE KEY EXISTE:', !!rawSupabaseAnonKey);
 
-console.log('SUPABASE URL:', supabaseUrl);
-console.log('SUPABASE KEY EXISTE:', !!supabaseKey);
+let tempSupabaseClient: any = null;
+let initError: string | null = null;
+
+if (!rawSupabaseUrl) {
+  initError = "A variável VITE_SUPABASE_URL está vazia ou não foi configurada. Certifique-se de configurar suas Variáveis de Ambiente no painel do Netlify ou no arquivo .env.";
+} else if (!rawSupabaseUrl.startsWith('http://') && !rawSupabaseUrl.startsWith('https://')) {
+  initError = `A URL do Supabase fornecida "${rawSupabaseUrl}" é inválida. Ela deve começar com http:// ou https:// e não deve conter sufixos adicionais como /rest/v1.`;
+} else if (!rawSupabaseAnonKey) {
+  initError = "A variável VITE_SUPABASE_ANON_KEY está vazia ou não foi configurada. Certifique-se de configurar suas Variáveis de Ambiente no painel do Netlify ou no arquivo .env.";
+} else {
+  try {
+    tempSupabaseClient = createClient(rawSupabaseUrl, rawSupabaseAnonKey);
+  } catch (err: any) {
+    initError = `Erro interno ao inicializar o Supabase: ${err?.message || err}`;
+    console.error("Erro crítico ao instanciar o Supabase:", err);
+  }
+}
+
+// Se houver qualquer falha ou falta de configuração, criamos um Proxy seguro para interceptar acessos e evitar quebra por TypeError
+if (initError || !tempSupabaseClient) {
+  console.warn("⚠️ ALERTA: SUPABASE NÃO CONFIGURADO OU APRESENTA ERRO DE INICIALIZAÇÃO ⚠️");
+  console.warn("- Detalhe do Erro:", initError);
+  
+  const createSafeProxy = (path: string = ''): any => {
+    const dummy = () => {};
+    return new Proxy(dummy, {
+      get(target, prop) {
+        if (typeof prop === 'symbol') return undefined;
+        const nextPath = path ? `${path}.${String(prop)}` : String(prop);
+        
+        if (prop === 'onAuthStateChange') {
+          return (callback: any) => {
+            console.warn(`[Supabase SafeProxy] onAuthStateChange interceptado seguro.`);
+            // Simula deslogado com segurança (timeout pequeno) para que a landing page consiga renderizar normalmente sem quebrar
+            setTimeout(() => callback(null), 10);
+            return { data: { subscription: { unsubscribe: () => {} } } };
+          };
+        }
+        return createSafeProxy(nextPath);
+      },
+      apply(target, thisArg, argumentsList) {
+        console.warn(`[Supabase SafeProxy] Chamada de método interceptada em "${path}()"`);
+        return Promise.resolve({
+          data: null,
+          error: {
+            message: `Supabase indisponível: ${initError || 'Configuração em falta.'}`,
+            status: 400
+          }
+        });
+      }
+    });
+  };
+  
+  tempSupabaseClient = createSafeProxy();
+}
+
+export const supabase = tempSupabaseClient;
+export const supabaseConfigError = initError;
 
 // Maintain compatibility with existing references to supabaseClient
 const supabaseClient = supabase;
@@ -43,12 +100,11 @@ const supabaseClient = supabase;
 export const isLocalStorageMode = false;
 
 export function forceLocalStorageMode() {
-  console.log("forceLocalStorageMode is disabled. Running in pure Supabase mode.");
+  console.log("forceLocalStorageMode está desativado. Rodando em modo Supabase puro.");
 }
 
 export function restoreFirebaseMode() {
-  localStorage.removeItem('jornada_bb_force_local_mode');
-  window.location.reload();
+  console.log("restoreFirebaseMode está desativado. Rodando em modo Supabase puro.");
 }
 
 // Keep a backward compatible name
@@ -179,8 +235,8 @@ export const dbService = {
     console.log("DBService.signUp TRIGGERED!");
     console.log("- isLocalStorageMode state:", isLocalStorageMode);
     console.log("- Does supabaseClient exist?:", !!supabaseClient);
-    console.log("- VITE_SUPABASE_URL initialized?:", !!supabaseUrl);
-    console.log("- VITE_SUPABASE_ANON_KEY initialized?:", !!supabaseKey);
+    console.log("- VITE_SUPABASE_URL initialized?:", !!rawSupabaseUrl);
+    console.log("- VITE_SUPABASE_ANON_KEY initialized?:", !!rawSupabaseAnonKey);
     console.log("- Target email:", profile.email);
     console.log("=================================================");
 

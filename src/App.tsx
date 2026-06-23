@@ -6,7 +6,7 @@ import ExamInstructions from './pages/ExamInstructions';
 import ExamPage from './pages/ExamPage';
 import ResultOfferPage from './pages/ResultOfferPage';
 import AdminPage from './pages/AdminPage';
-import { dbService } from './firebase';
+import { dbService, supabaseConfigError } from './firebase';
 import { User, ExamAttempt } from './types';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from './components/Button';
@@ -14,6 +14,56 @@ import { Button } from './components/Button';
 type Screen = 'landing' | 'auth' | 'dashboard' | 'instructions' | 'exam' | 'result' | 'admin';
 
 export default function App() {
+  // Se houver erro de configuração de variáveis do Supabase, exibe um painel de diagnóstico detalhado para evitar tela branca
+  if (supabaseConfigError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-100 select-none">
+        <div className="max-w-md w-full bg-slate-900 border border-red-900/40 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-red-500"></div>
+          <div className="flex flex-col items-center mb-6">
+            <span className="p-3 bg-red-500/10 text-red-400 rounded-2xl mb-4">
+              <ShieldCheck className="w-10 h-10" />
+            </span>
+            <h2 className="font-display font-black text-xl text-white tracking-tight uppercase">
+              Supabase Sem Configuração
+            </h2>
+            <p className="text-xs text-slate-400 font-mono mt-1 text-center uppercase tracking-widest">
+              Erro de Ambiente de Produção
+            </p>
+          </div>
+          
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mb-6 text-left">
+            <p className="text-[13px] text-slate-300 font-medium leading-relaxed mb-3">
+              O aplicativo foi carregado com sucesso, mas a conexão com o banco de dados Supabase falhou:
+            </p>
+            <p className="text-xs font-mono text-red-400 bg-red-950/25 p-3 rounded-xl border border-red-900/30 break-words leading-relaxed">
+              {supabaseConfigError}
+            </p>
+          </div>
+
+          <div className="text-xs text-slate-400 leading-relaxed text-left space-y-2.5 mb-6">
+            <p className="font-bold text-slate-300 uppercase tracking-wide text-[10px]">Como corrigir no Netlify:</p>
+            <ol className="list-decimal pl-4 space-y-1 text-slate-450">
+              <li>Acesse o painel do seu site no <strong>Netlify</strong>.</li>
+              <li>Acesse <strong>Site Configuration</strong> &gt; <strong>Environment variables</strong>.</li>
+              <li>Adicione as variáveis exatamente com estes nomes:
+                <ul className="list-disc pl-4 mt-1 font-mono text-[11px] text-slate-300">
+                  <li><code>VITE_SUPABASE_URL</code></li>
+                  <li><code>VITE_SUPABASE_ANON_KEY</code></li>
+                </ul>
+              </li>
+              <li>Faça um novo deploy (Redeploy) para carregar as novas variáveis de ambiente no cliente.</li>
+            </ol>
+          </div>
+
+          <p className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+            Jornada BB — Conexão e Segurança Ativa
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Navigation State
   const [screen, setScreen] = useState<Screen>('landing');
   const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
