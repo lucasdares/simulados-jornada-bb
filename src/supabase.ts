@@ -357,6 +357,10 @@ export const dbService = {
 
   // Attempt Management Options
   async getAttempts(userId: string): Promise<ExamAttempt[]> {
+    const local = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+    const localUserMap = new Map<string, ExamAttempt>();
+    local.filter(a => a.userId === userId).forEach(a => localUserMap.set(a.id, a));
+
     if (!isLocalStorageMode && supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -367,14 +371,30 @@ export const dbService = {
         if (error) {
           throw error;
         }
-        return data || [];
+
+        // Merge local and remote
+        if (data) {
+          data.forEach((att: any) => {
+            const existing = localUserMap.get(att.id);
+            if (!existing || att.status === 'submitted' || (new Date(att.submittedAt || att.startedAt).getTime() > new Date(existing.submittedAt || existing.startedAt).getTime())) {
+              localUserMap.set(att.id, att);
+            }
+          });
+        }
+        
+        const merged = Array.from(localUserMap.values());
+        // sync merged back to local storage
+        const allLocal = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+        const otherUsersLocal = allLocal.filter(a => a.userId !== userId);
+        setLocal('jornada_bb_attempts', [...otherUsersLocal, ...merged]);
+        
+        return merged;
       } catch (error) {
-        handleSupabaseError(error, OperationType.LIST, `attempts/${userId}`);
-        return [];
+        console.warn("Failed to get attempts from Supabase, operating from local cache:", error);
+        return Array.from(localUserMap.values());
       }
     } else {
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      return attempts.filter(a => a.userId === userId);
+      return Array.from(localUserMap.values());
     }
   },
 
@@ -397,6 +417,11 @@ export const dbService = {
       status: 'started',
       whatsappClicked: false,
     };
+
+    // Resilient local write first!
+    const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+    attempts.push(newAttempt);
+    setLocal('jornada_bb_attempts', attempts);
     
     if (!isLocalStorageMode && supabaseClient) {
       try {
@@ -409,24 +434,30 @@ export const dbService = {
         }
         
         await this.logAppEvent(userId, 'simulado_started', { attemptId, simuladoId });
-        return newAttempt;
       } catch (error) {
-        handleSupabaseError(error, OperationType.WRITE, `attempts/${attemptId}`);
-        throw error;
+        console.warn("Failed to insert attempt in Supabase, running with local mode overlay:", error);
+        await this.logAppEvent(userId, 'simulado_started_local', { attemptId, simuladoId });
       }
     } else {
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      attempts.push(newAttempt);
-      setLocal('jornada_bb_attempts', attempts);
-      
       await this.logAppEvent(userId, 'simulado_started', { attemptId, simuladoId });
-      return newAttempt;
     }
+
+    return newAttempt;
   },
 
   async saveAnswers(attemptId: string, answers: Record<number, string>, timeSpent: number): Promise<void> {
     const totalAnswered = Object.keys(answers).length;
     
+    // Always update LocalStorage baseline
+    const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+    const index = attempts.findIndex(a => a.id === attemptId);
+    if (index > -1) {
+      attempts[index].answers = answers;
+      attempts[index].totalAnswered = totalAnswered;
+      attempts[index].timeSpent = timeSpent;
+      setLocal('jornada_bb_attempts', attempts);
+    }
+
     if (!isLocalStorageMode && supabaseClient) {
       try {
         const { error } = await supabaseClient
@@ -442,16 +473,7 @@ export const dbService = {
           throw error;
         }
       } catch (error) {
-        handleSupabaseError(error, OperationType.WRITE, `attempts/${attemptId}`);
-      }
-    } else {
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      const index = attempts.findIndex(a => a.id === attemptId);
-      if (index > -1) {
-        attempts[index].answers = answers;
-        attempts[index].totalAnswered = totalAnswered;
-        attempts[index].timeSpent = timeSpent;
-        setLocal('jornada_bb_attempts', attempts);
+        console.warn("Autosave remote to Supabase failed (silent warning):", error);
       }
     }
   },
@@ -466,6 +488,23 @@ export const dbService = {
     const timestamp = new Date().toISOString();
     const totalAnswered = Object.keys(answers).length;
     
+    // Always update LocalStorage baseline first
+    const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+    const index = attempts.findIndex(a => a.id === attemptId);
+    let userId = 'unknown';
+    if (index > -1) {
+      attempts[index].answers = answers;
+      attempts[index].totalAnswered = totalAnswered;
+      attempts[index].score = score;
+      attempts[index].scoreBySubject = scoreBySubject;
+      attempts[index].timeSpent = timeSpent;
+      attempts[index].status = 'submitted';
+      attempts[index].submittedAt = timestamp;
+      userId = attempts[index].userId;
+      
+      setLocal('jornada_bb_attempts', attempts);
+    }
+
     if (!isLocalStorageMode && supabaseClient) {
       try {
         const { error } = await supabaseClient
@@ -485,36 +524,29 @@ export const dbService = {
           throw error;
         }
         
-        const { data } = await supabaseClient
-          .from('attempts')
-          .select('userId')
-          .eq('id', attemptId)
-          .single();
-          
-        const userId = data?.userId || 'unknown';
         await this.logAppEvent(userId, 'simulado_submitted', { attemptId, score, timeSpent });
       } catch (error) {
-        handleSupabaseError(error, OperationType.WRITE, `attempts/${attemptId}`);
+        console.error("Failed to submit attempt remotely (silent fallback active):", error);
+        await this.logAppEvent(userId, 'simulado_submitted_local_fallback', { attemptId, score, timeSpent });
       }
     } else {
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      const index = attempts.findIndex(a => a.id === attemptId);
-      if (index > -1) {
-        attempts[index].answers = answers;
-        attempts[index].totalAnswered = totalAnswered;
-        attempts[index].score = score;
-        attempts[index].scoreBySubject = scoreBySubject;
-        attempts[index].timeSpent = timeSpent;
-        attempts[index].status = 'submitted';
-        attempts[index].submittedAt = timestamp;
-        
-        setLocal('jornada_bb_attempts', attempts);
-        await this.logAppEvent(attempts[index].userId, 'simulado_submitted', { attemptId, score, timeSpent });
+      if (userId !== 'unknown') {
+        await this.logAppEvent(userId, 'simulado_submitted', { attemptId, score, timeSpent });
       }
     }
   },
 
   async clickWhatsapp(attemptId: string): Promise<void> {
+    // ALWAYS save to LocalStorage first
+    const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+    const index = attempts.findIndex(a => a.id === attemptId);
+    let userId = 'unknown';
+    if (index > -1) {
+      attempts[index].whatsappClicked = true;
+      userId = attempts[index].userId;
+      setLocal('jornada_bb_attempts', attempts);
+    }
+
     if (!isLocalStorageMode && supabaseClient) {
       try {
         const { error } = await supabaseClient
@@ -528,24 +560,14 @@ export const dbService = {
           throw error;
         }
         
-        const { data } = await supabaseClient
-          .from('attempts')
-          .select('userId')
-          .eq('id', attemptId)
-          .single();
-          
-        const userId = data?.userId || 'unknown';
         await this.logAppEvent(userId, 'whatsapp_offer_clicked', { attemptId });
       } catch (error) {
-        handleSupabaseError(error, OperationType.WRITE, `attempts/${attemptId}`);
+        console.warn("Failed to register whatsapp Click remotely (using local fallback logs):", error);
+        await this.logAppEvent(userId, 'whatsapp_offer_clicked_local_fallback', { attemptId });
       }
     } else {
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      const index = attempts.findIndex(a => a.id === attemptId);
-      if (index > -1) {
-        attempts[index].whatsappClicked = true;
-        setLocal('jornada_bb_attempts', attempts);
-        await this.logAppEvent(attempts[index].userId, 'whatsapp_offer_clicked', { attemptId });
+      if (userId !== 'unknown') {
+        await this.logAppEvent(userId, 'whatsapp_offer_clicked', { attemptId });
       }
     }
   },

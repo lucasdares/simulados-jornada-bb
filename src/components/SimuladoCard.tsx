@@ -14,6 +14,8 @@ interface SimuladoCardProps {
   isUpcoming?: boolean;
   score?: number; // if completed
   onAction?: () => void;
+  attemptsCount?: number;
+  onRetake?: () => void;
 }
 
 export default function SimuladoCard({
@@ -24,7 +26,9 @@ export default function SimuladoCard({
   releaseStr,
   isUpcoming = false,
   score,
-  onAction
+  onAction,
+  attemptsCount,
+  onRetake
 }: SimuladoCardProps) {
   const { releaseTime } = getExamTimes();
 
@@ -158,18 +162,37 @@ export default function SimuladoCard({
       )}
 
       {status === 'submitted' && onAction && (
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 bg-emerald-500/5 text-emerald-450 border border-emerald-500/10 rounded-xl px-4 py-3 text-sm text-center font-semibold">
-            Pontuação registrada {score !== undefined ? `: ${score}%` : ''}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex-1 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 rounded-xl px-4 py-3 text-sm text-center font-semibold">
+              Pontuação registrada {score !== undefined ? `: ${score}%` : ''}
+            </div>
+            <Button 
+              variant="outline" 
+              size="md" 
+              className="w-full sm:w-auto"
+              onClick={onAction}
+            >
+              Ver Resultados
+            </Button>
           </div>
-          <Button 
-            variant="outline" 
-            size="md" 
-            className="w-full sm:w-auto"
-            onClick={onAction}
-          >
-            Ver Resultados
-          </Button>
+          
+          {attemptsCount !== undefined && attemptsCount < 3 && onRetake && (
+            <Button
+              variant="primary"
+              size="md"
+              className="w-full bg-[#0057A8] hover:bg-[#004b91] text-white border-none font-bold"
+              onClick={onRetake}
+            >
+              Refazer Simulado ({3 - attemptsCount} tentativas restantes)
+            </Button>
+          )}
+
+          {attemptsCount !== undefined && attemptsCount >= 3 && (
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider text-center mt-1">
+              Limite de 3 tentativas atingido
+            </div>
+          )}
         </div>
       )}
     </Card>

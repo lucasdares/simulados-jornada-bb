@@ -49,14 +49,21 @@ export default function Dashboard({ user, onLogout, onStartExam, onViewResults, 
   }, [user.uid, user.email]);
 
   // Find if Simulado 01 was completed or in progress
-  const firstExamAttempt = attempts.find(a => a.simuladoId === '01');
-  const isCompleted = firstExamAttempt?.status === 'submitted';
-  const hasStartedButNotSubmitted = firstExamAttempt && firstExamAttempt.status === 'started';
+  const simulado1Attempts = attempts
+    .filter(a => a.simuladoId === '01')
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+
+  const activeUnresolved = simulado1Attempts.find(a => a.status === 'started');
+  const hasStartedButNotSubmitted = !!activeUnresolved;
+
+  const latestCompletedAttempt = simulado1Attempts.find(a => a.status === 'submitted');
+  const isCompleted = !!latestCompletedAttempt;
+  const attemptsCount = simulado1Attempts.length;
 
   // Stats calculation
   const totalCompleted = attempts.filter(a => a.status === 'submitted').length;
   const averageScore = totalCompleted > 0 
-    ? Math.round(attempts.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalCompleted)
+    ? Math.round(attempts.filter(a => a.status === 'submitted').reduce((acc, curr) => acc + (curr.score || 0), 0) / totalCompleted)
     : null;
 
   return (
@@ -187,10 +194,12 @@ export default function Dashboard({ user, onLogout, onStartExam, onViewResults, 
                   description="Composto por 70 questões objetivas, seguindo rigorosamente a divisão de pesos, itens e regras do edital oficial Cesgranrio BB 2023."
                   status={isCompleted ? 'submitted' : examStatus}
                   releaseStr="Hoje às 20h00"
-                  score={firstExamAttempt?.score}
+                  score={latestCompletedAttempt?.score}
+                  attemptsCount={attemptsCount}
+                  onRetake={onStartExam}
                   onAction={() => {
-                    if (isCompleted && firstExamAttempt) {
-                      onViewResults(firstExamAttempt);
+                    if (isCompleted && latestCompletedAttempt) {
+                      onViewResults(latestCompletedAttempt);
                     } else if (examStatus === 'available') {
                       onStartExam();
                     }
@@ -199,13 +208,16 @@ export default function Dashboard({ user, onLogout, onStartExam, onViewResults, 
               )}
 
               {/* In Progress Recovery Warning */}
-              {hasStartedButNotSubmitted && !isCompleted && (
-                <div className="bg-slate-100 border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+              {hasStartedButNotSubmitted && (
+                <div className="bg-amber-50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 flex items-center justify-between shadow-xs">
                   <div className="flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#00A6D6] animate-ping"></span>
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </span>
                     <div className="text-sm">
-                      <p className="text-[#0057A8] font-bold leading-none">Simulado em andamento</p>
-                      <p className="text-slate-600 text-xs mt-1">Sua sessão de respostas está ativa. Clique ao lado para retomar de onde parou.</p>
+                      <p className="text-amber-800 dark:text-amber-400 font-bold leading-none">Simulado em andamento</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-xs mt-1">Sua sessão de respostas está ativa. Clique ao lado para retomar de onde parou.</p>
                     </div>
                   </div>
                   <Button 
@@ -217,6 +229,65 @@ export default function Dashboard({ user, onLogout, onStartExam, onViewResults, 
                     Retomar
                   </Button>
                 </div>
+              )}
+
+              {/* Historical Attempts Log */}
+              {simulado1Attempts.length > 0 && (
+                <Card variant="default" className="p-5 border-slate-205 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+                  <h4 className="font-display font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2 flex justify-between items-center">
+                    <span>Suas Tentativas ({simulado1Attempts.length}/3)</span>
+                    {3 - attemptsCount > 0 && (
+                      <span className="text-[10px] bg-[#0057A8]/10 dark:bg-[#00A6D6]/10 text-[#0057A8] dark:text-[#00A6D6] px-2 py-0.5 rounded-full font-bold">
+                        Restam {3 - attemptsCount}
+                      </span>
+                    )}
+                  </h4>
+                  <div className="space-y-3">
+                    {simulado1Attempts.map((att, idx) => {
+                      const attemptNum = simulado1Attempts.length - idx;
+                      const isSub = att.status === 'submitted';
+                      const dateStr = att.startedAt ? new Date(att.startedAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : '';
+
+                      return (
+                        <div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/80 hover:bg-slate-150/50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${
+                              isSub ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100' : 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-450 border border-amber-100'
+                            }`}>
+                              #{attemptNum}
+                            </span>
+                            <div>
+                              <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
+                                {isSub ? `Concluído: ${att.score}%` : 'Em andamento'}
+                              </p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{dateStr}</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-[#0057A8] dark:text-[#00A6D6] hover:bg-[#0057A8]/5 px-3 py-1 bg-white dark:bg-slate-800 shadow-2xs border border-slate-200 dark:border-slate-700 hover:text-[#004b91]"
+                            onClick={() => {
+                              if (isSub) {
+                                onViewResults(att);
+                              } else {
+                                onStartExam();
+                              }
+                            }}
+                          >
+                            {isSub ? 'Ver Detalhes' : 'Retomar'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
               )}
             </div>
 

@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Bookmark, Send, List, Clock, AlertTriangle, 
 
 interface ExamPageProps {
   attempt: ExamAttempt;
-  onSubmitted: () => void;
+  onSubmitted: (attemptId: string) => void;
 }
 
 export default function ExamPage({ attempt, onSubmitted }: ExamPageProps) {
@@ -135,7 +135,7 @@ export default function ExamPage({ attempt, onSubmitted }: ExamPageProps) {
 
       setIsSubmitting(false);
       setShowSubmitModal(false);
-      onSubmitted();
+      onSubmitted(attempt.id);
     } catch (err) {
       console.error("Failed to compile score submit attempt: ", err);
       setIsSubmitting(false);

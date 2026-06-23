@@ -85,6 +85,12 @@ export default function App() {
         setActiveAttempt(unresolved);
         setScreen('instructions');
       } else {
+        const simulado1Attempts = userAttempts.filter(a => a.simuladoId === '01');
+        if (simulado1Attempts.length >= 3) {
+          console.warn("Max 3 attempts reached for this simulado.");
+          return;
+        }
+
         // Build new attempt object
         const newAttempt = await dbService.startAttempt(
           currentUser.uid,
@@ -103,16 +109,37 @@ export default function App() {
   };
 
   // Triggering after exam submission completes
-  const handleExamSubmissionSuccess = async () => {
+  const handleExamSubmissionSuccess = async (submittedId?: string) => {
     if (!currentUser || !activeAttempt) return;
     setBusyLoading(true);
 
     try {
       const attemptsList = await dbService.getAttempts(currentUser.uid);
-      const finalised = attemptsList.find(a => a.simuladoId === '01' && a.status === 'submitted');
+      let finalised = null;
+      if (submittedId) {
+        finalised = attemptsList.find(a => a.id === submittedId);
+      }
+      if (!finalised) {
+        // Sort by submittedAt descending or startedAt descending to get the newest submitted attempt
+        const submittedAttempts = attemptsList
+          .filter(a => a.simuladoId === '01' && a.status === 'submitted')
+          .sort((a, b) => {
+            const dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+            const dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+            return dateB - dateA;
+          });
+        finalised = submittedAttempts[0];
+      }
       
       if (finalised) {
         setActiveAttempt(finalised);
+      } else {
+        // Safe robust state overlay as a fallback
+        setActiveAttempt({
+          ...activeAttempt,
+          status: 'submitted',
+          submittedAt: new Date().toISOString()
+        });
       }
       setScreen('result');
     } catch (err) {
