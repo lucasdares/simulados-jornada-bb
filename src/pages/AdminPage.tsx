@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Logo from '../components/Logo';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { dbService } from '../firebase';
+import { dbService, isLocalStorageMode, restoreSupabaseMode } from '../firebase';
 import { User, ExamAttempt } from '../types';
 import { Shield, Eye, Download, Search, Filter, RefreshCw, BarChart3, Users, Clock, MessageSquareShare, CheckCircle2 } from 'lucide-react';
 
@@ -188,6 +188,27 @@ export default function AdminPage({ onBack, currentUser }: AdminPageProps) {
 
       {/* Main Container */}
       <main className="max-w-7xl w-full mx-auto px-6 py-8 flex-grow space-y-8">
+
+        {isLocalStorageMode && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-400 text-xs p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+              <div className="text-left">
+                <p className="font-extrabold text-[13px] text-amber-700 dark:text-amber-450 leading-tight">Painel Visualizando Banco Local (Offline)</p>
+                <p className="text-slate-500 dark:text-slate-450 mt-0.5 leading-normal max-w-md">Estes dados vêm estritamente da cache local de simulação do seu navegador.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => restoreSupabaseMode()}
+              className="w-full sm:w-auto text-center bg-[#0057A8] text-white hover:bg-[#004b91] font-black px-4 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+            >
+              🔄 Conectar Banco de Dados Supabase (Modo Online)
+            </button>
+          </div>
+        )}
         
         {/* Executive summary widgets row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">

@@ -3,7 +3,7 @@ import Logo from '../components/Logo';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import ThemeToggle from '../components/ThemeToggle';
-import { dbService, forceLocalStorageMode, isLocalStorageMode } from '../firebase';
+import { dbService, forceLocalStorageMode, isLocalStorageMode, restoreSupabaseMode } from '../firebase';
 import { Mail, Lock, User, Phone, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 
 interface AuthPageProps {
@@ -166,6 +166,31 @@ export default function AuthPage({ onBack, onSuccess, initialMode = 'register' }
             {mode === 'register' ? 'Crie seu cadastro gratuito em menos de 1 minuto' : 'Acesse seus simulados da Jornada BB'}
           </p>
         </div>
+
+        {/* Local Storage Mode Override Indicator with Reactivation Switch */}
+        {isLocalStorageMode && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-400 text-xs p-4 rounded-2xl flex flex-col items-center gap-3.5 mb-6 shadow-xs text-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+              <p className="font-extrabold text-[13px] text-amber-700 dark:text-amber-400 leading-tight">
+                Modo Offline (Local Storage) Ativo!
+              </p>
+              <p className="text-slate-500 dark:text-slate-450 leading-relaxed max-w-xs leading-normal">
+                Sua sessão de respostas e cadastros estão limitados ao seu navegador atual.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => restoreSupabaseMode()}
+              className="w-full text-center bg-[#0057A8] hover:bg-[#004b91] text-white text-[11px] font-black px-4 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer uppercase tracking-wider"
+            >
+              🔄 Conectar ao Supabase (Modo Online Cloud)
+            </button>
+          </div>
+        )}
 
         {/* Auth Box Container */}
         <Card variant="premium" className="shadow-2xl border-slate-200/80 dark:border-slate-800 relative overflow-hidden">

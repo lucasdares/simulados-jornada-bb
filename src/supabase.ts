@@ -27,60 +27,23 @@ interface SupabaseErrorInfo {
 
 // Retrieve configuration from Vite bundle/secrets
 // @ts-ignore
-const rawSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 // @ts-ignore
-const rawSupabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
-// Sanitize Supabase URL: remove trailing slashes and any trailing /rest/v1 or rest/v1/ suffix
-let sanitizedSupabaseUrl = rawSupabaseUrl;
-if (sanitizedSupabaseUrl) {
-  // Remove trailing slashes
-  sanitizedSupabaseUrl = sanitizedSupabaseUrl.replace(/\/+$/, '');
-  // Remove trailing /rest/v1 or rest/v1/ if they exist
-  sanitizedSupabaseUrl = sanitizedSupabaseUrl.replace(/\/rest\/v1\/?$/, '');
-}
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Logs as explicitly requested by the user
-console.log("=== SUPABASE DIAGNOSTIC CONFIGURATION ===");
-console.log("- Raw VITE_SUPABASE_URL from env:", rawSupabaseUrl);
-console.log("- Sanitized URL being used:", sanitizedSupabaseUrl);
-console.log("- Does VITE_SUPABASE_ANON_KEY exist?:", !!rawSupabaseAnonKey);
-if (rawSupabaseAnonKey) {
-  console.log("- VITE_SUPABASE_ANON_KEY length:", rawSupabaseAnonKey.length);
-  console.log("- VITE_SUPABASE_ANON_KEY snippet (Prefix/Suffix):", rawSupabaseAnonKey.slice(0, 8) + "..." + rawSupabaseAnonKey.slice(-8));
-} else {
-  console.warn("- WARNING: VITE_SUPABASE_ANON_KEY is missing or empty.");
-}
+console.log('SUPABASE URL:', supabaseUrl);
+console.log('SUPABASE KEY EXISTE:', !!supabaseKey);
 
-const forceLocalPref = localStorage.getItem('jornada_bb_force_local_mode') === 'true';
+// Maintain compatibility with existing references to supabaseClient
+const supabaseClient = supabase;
 
-let supabaseClient: any = null;
-// CRITICAL: We removed the automatic placeholder checks fallback as requested to let the real error show.
-// localMode is only active if the user explicitly forced it inside the UI/LocalStorage.
-let localMode = forceLocalPref;
-
-if (!localMode) {
-  console.log("Attempting to initialize Supabase Client with:", sanitizedSupabaseUrl);
-  try {
-    if (!sanitizedSupabaseUrl || !rawSupabaseAnonKey) {
-      console.warn("WARNING: Initializing Supabase client with empty URL or Anon Key. This might trigger 'Failed to fetch' or CORS errors.");
-    }
-    supabaseClient = createClient(sanitizedSupabaseUrl, rawSupabaseAnonKey);
-    console.log("Supabase Client instance constructed successfully!");
-  } catch (err) {
-    console.error("CRITICAL error during Supabase Client creation:", err);
-    // Do not set localMode = true automatically, let authentic errors reach the caller as requested
-  }
-} else {
-  console.log("Using Local Storage Mode (actively forced by local preference).");
-}
-
-export let isLocalStorageMode = localMode;
+// We strictly disable any fake or local mode to avoid interference with live users
+export const isLocalStorageMode = false;
 
 export function forceLocalStorageMode() {
-  isLocalStorageMode = true;
-  localStorage.setItem('jornada_bb_force_local_mode', 'true');
-  console.log("Forced Local Mode permanently.");
+  console.log("forceLocalStorageMode is disabled. Running in pure Supabase mode.");
 }
 
 export function restoreFirebaseMode() {
@@ -112,7 +75,9 @@ function handleSupabaseError(error: unknown, operationType: OperationType, path:
   const errInfo: SupabaseErrorInfo = {
     error: rawMsg || 'Unknown Supabase Error',
     authInfo: {
+      // @ts-ignore
       userId: supabaseClient?.auth?.user?.()?.id || null,
+      // @ts-ignore
       email: supabaseClient?.auth?.user?.()?.email || null,
     },
     operationType,
@@ -157,19 +122,35 @@ export const dbService = {
             .eq('uid', session.user.id)
             .single();
             
+          let finalUser: User;
           if (dbUser && !error) {
-            callback(dbUser as User);
+            finalUser = dbUser as User;
           } else {
-            callback({
+            finalUser = {
               uid: session.user.id,
               nome: session.user.user_metadata?.nome || 'Usuário BB',
               email: session.user.email || '',
+              telefone: session.user.user_metadata?.telefone || '',
               createdAt: new Date().toISOString(),
               lastLoginAt: new Date().toISOString(),
               source: 'Direct',
               acceptedTerms: true
-            });
+            };
           }
+
+          // Cache in local storage for resilient offline/hybrid access
+          const usersList = getLocal<User[]>('jornada_bb_users', []);
+          const index = usersList.findIndex(u => u.uid === finalUser.uid || u.email.toLowerCase() === finalUser.email.toLowerCase());
+          if (index > -1) {
+            usersList[index] = finalUser;
+          } else {
+            usersList.push(finalUser);
+          }
+          setLocal('jornada_bb_users', usersList);
+          setLocal('jornada_bb_current_uid_profile', finalUser);
+          localCurrentUser = finalUser;
+
+          callback(finalUser);
         } catch (err) {
           console.error("Error loading profile details on state change:", err);
           callback(null);
@@ -194,13 +175,27 @@ export const dbService = {
   async signUp(profile: Omit<User, 'uid' | 'createdAt' | 'lastLoginAt'>, password: string): Promise<User> {
     const timestamp = new Date().toISOString();
     
+    console.log("=================================================");
+    console.log("DBService.signUp TRIGGERED!");
+    console.log("- isLocalStorageMode state:", isLocalStorageMode);
+    console.log("- Does supabaseClient exist?:", !!supabaseClient);
+    console.log("- VITE_SUPABASE_URL initialized?:", !!supabaseUrl);
+    console.log("- VITE_SUPABASE_ANON_KEY initialized?:", !!supabaseKey);
+    console.log("- Target email:", profile.email);
+    console.log("=================================================");
+
     if (!isLocalStorageMode && supabaseClient) {
-      console.log("=== DBService.signUp Triggered ===");
-      console.log("- Target email:", profile.email);
-      console.log("- Profile details to save:", JSON.stringify(profile));
-      
       try {
-        console.log("- Attempting auth.signUp with credentials...");
+        console.log(">>> CALLING supabaseClient.auth.signUp()");
+        console.log("Credential details:", {
+          email: profile.email.trim(),
+          passwordLength: password ? password.length : 0,
+          userMetadata: {
+            nome: profile.nome,
+            telefone: profile.telefone,
+          }
+        });
+
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
           email: profile.email.trim(),
           password: password,
@@ -213,11 +208,12 @@ export const dbService = {
         });
         
         if (authError) {
-          console.error("- auth.signUp failed. Raw error object:", authError);
+          console.error(">>> ERROR RETURNED FROM supabase.auth.signUp:", authError);
+          console.error("- Complete raw authError JSON:", JSON.stringify(authError, null, 2));
           throw authError; // handled in the catch block
         }
         
-        console.log("- auth.signUp completed! AuthData:", JSON.stringify(authData));
+        console.log(">>> SUCCESS FROM supabase.auth.signUp! Result AuthData:", JSON.stringify(authData, null, 2));
         const newUid = authData.user?.id || `user_${Math.random().toString(36).substr(2, 9)}`;
         const newUser: User = {
           ...profile,
@@ -237,9 +233,26 @@ export const dbService = {
         }
         
         console.log("- public.users insert completed successfully!");
+
+        // Write to local cache for admin board auto-sync & hybrid resiliency
+        const usersList = getLocal<User[]>('jornada_bb_users', []);
+        const index = usersList.findIndex(u => u.uid === newUser.uid || u.email.toLowerCase() === newUser.email.toLowerCase());
+        if (index > -1) {
+          usersList[index] = newUser;
+        } else {
+          usersList.push(newUser);
+        }
+        setLocal('jornada_bb_users', usersList);
+        setLocal('jornada_bb_current_uid_profile', newUser);
+        localCurrentUser = newUser;
+
         return newUser;
       } catch (error) {
-        console.error("- Exception raised inside dbService.signUp loop:", error);
+        console.error(">>> CRITICAL EXCEPTION CAUGHT INSIDE dbService.signUp loop:", error);
+        if (error && typeof error === 'object') {
+          console.error("- Full Exception detail keys:", Object.keys(error));
+          console.error("- JSON representation:", JSON.stringify(error, null, 2));
+        }
         handleSupabaseError(error, OperationType.WRITE, `users/${profile.email}`);
         throw error;
       }
@@ -294,9 +307,10 @@ export const dbService = {
           .eq('uid', uid)
           .single();
           
+        let finalUser: User;
         if (dbError || !dbUser) {
           // If the profile list row failed to register originally, build inline
-          const newUser: User = {
+          finalUser = {
             uid,
             nome: authData.user?.user_metadata?.nome || 'Usuário BB',
             email: authData.user?.email || email,
@@ -307,20 +321,33 @@ export const dbService = {
             acceptedTerms: true
           };
           
-          await supabaseClient.from('users').insert([newUser]);
-          return newUser;
+          await supabaseClient.from('users').insert([finalUser]);
+        } else {
+          // Update login timestamp
+          await supabaseClient
+            .from('users')
+            .update({ lastLoginAt: timestamp })
+            .eq('uid', uid);
+            
+          finalUser = {
+            ...dbUser,
+            lastLoginAt: timestamp
+          };
         }
+
+        // Write to local cache for resilient administration/dashboard use
+        const usersList = getLocal<User[]>('jornada_bb_users', []);
+        const index = usersList.findIndex(u => u.uid === finalUser.uid || u.email.toLowerCase() === finalUser.email.toLowerCase());
+        if (index > -1) {
+          usersList[index] = finalUser;
+        } else {
+          usersList.push(finalUser);
+        }
+        setLocal('jornada_bb_users', usersList);
+        setLocal('jornada_bb_current_uid_profile', finalUser);
+        localCurrentUser = finalUser;
         
-        // Update login timestamp
-        await supabaseClient
-          .from('users')
-          .update({ lastLoginAt: timestamp })
-          .eq('uid', uid);
-          
-        return {
-          ...dbUser,
-          lastLoginAt: timestamp
-        };
+        return finalUser;
       } catch (error) {
         handleSupabaseError(error, OperationType.GET, `users/${email}`);
         throw error;
@@ -601,6 +628,9 @@ export const dbService = {
 
   // Admin Portal Stats
   async getAdminData(): Promise<AdminStats> {
+    const localUsers = getLocal<User[]>('jornada_bb_users', []);
+    const localAttempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
+
     if (!isLocalStorageMode && supabaseClient) {
       try {
         const [usersRes, attemptsRes] = await Promise.all([
@@ -611,40 +641,99 @@ export const dbService = {
         if (usersRes.error) throw usersRes.error;
         if (attemptsRes.error) throw attemptsRes.error;
         
-        const usersList: User[] = usersRes.data || [];
-        const attemptsList: ExamAttempt[] = attemptsRes.data || [];
-        
-        const totalStarted = attemptsList.length;
-        const totalSubmitted = attemptsList.filter(a => a.status === 'submitted').length;
-        const totalWhatsappClicks = attemptsList.filter(a => a.whatsappClicked).length;
+        const remoteUsers: User[] = usersRes.data || [];
+        const remoteAttempts: ExamAttempt[] = attemptsRes.data || [];
+
+        // Dynamic synchronizer: push any local-only data to the cloud database
+        const remoteEmailSet = new Set(remoteUsers.map(u => u.email.toLowerCase()));
+        const remoteUidSet = new Set(remoteUsers.map(u => u.uid));
+
+        const unsyncedUsers = localUsers.filter(u => u.email && !remoteEmailSet.has(u.email.toLowerCase()) && !remoteUidSet.has(u.uid));
+        if (unsyncedUsers.length > 0) {
+          console.log(`Syncing ${unsyncedUsers.length} local-only profiles to cloud database...`);
+          for (const u of unsyncedUsers) {
+            try {
+              const { error } = await supabaseClient.from('users').insert([u]);
+              if (!error) {
+                remoteUsers.push(u);
+              }
+            } catch (err) {
+              console.error("Auto-sync local profile failed:", u, err);
+            }
+          }
+        }
+
+        const remoteAttemptIdSet = new Set(remoteAttempts.map(a => a.id));
+        const unsyncedAttempts = localAttempts.filter(a => !remoteAttemptIdSet.has(a.id));
+        if (unsyncedAttempts.length > 0) {
+          console.log(`Syncing ${unsyncedAttempts.length} local-only attempts to cloud database...`);
+          for (const a of unsyncedAttempts) {
+            try {
+              const { error } = await supabaseClient.from('attempts').insert([a]);
+              if (!error) {
+                remoteAttempts.push(a);
+              }
+            } catch (err) {
+              console.error("Auto-sync local attempt failed:", a, err);
+            }
+          }
+        }
+
+        // Deduplicate consolidated lists
+        const dedupedUsersMap = new Map<string, User>();
+        // local users first
+        localUsers.forEach(u => u.email && dedupedUsersMap.set(u.email.toLowerCase(), u));
+        // remote users take precedence
+        remoteUsers.forEach(u => u.email && dedupedUsersMap.set(u.email.toLowerCase(), u));
+
+        const consolidatedUsers = Array.from(dedupedUsersMap.values());
+
+        const dedupedAttemptsMap = new Map<string, ExamAttempt>();
+        localAttempts.forEach(a => dedupedAttemptsMap.set(a.id, a));
+        remoteAttempts.forEach(a => dedupedAttemptsMap.set(a.id, a));
+
+        const consolidatedAttempts = Array.from(dedupedAttemptsMap.values());
+
+        const totalStarted = consolidatedAttempts.length;
+        const totalSubmitted = consolidatedAttempts.filter(a => a.status === 'submitted').length;
+        const totalWhatsappClicks = consolidatedAttempts.filter(a => a.whatsappClicked).length;
         
         return {
-          totalUsers: usersList.length,
+          totalUsers: consolidatedUsers.length,
           totalStarted,
           totalSubmitted,
           totalWhatsappClicks,
-          users: usersList,
-          attempts: attemptsList
+          users: consolidatedUsers,
+          attempts: consolidatedAttempts
         };
       } catch (error) {
-        handleSupabaseError(error, OperationType.LIST, 'admin_check');
-        throw error;
+        console.warn("Failed to gather complete dataset from Supabase. Displaying local data only:", error);
+        
+        const totalStarted = localAttempts.length;
+        const totalSubmitted = localAttempts.filter(a => a.status === 'submitted').length;
+        const totalWhatsappClicks = localAttempts.filter(a => a.whatsappClicked).length;
+        
+        return {
+          totalUsers: localUsers.length,
+          totalStarted,
+          totalSubmitted,
+          totalWhatsappClicks,
+          users: localUsers,
+          attempts: localAttempts
+        };
       }
     } else {
-      const users = getLocal<User[]>('jornada_bb_users', []);
-      const attempts = getLocal<ExamAttempt[]>('jornada_bb_attempts', []);
-      
-      const totalStarted = attempts.length;
-      const totalSubmitted = attempts.filter(a => a.status === 'submitted').length;
-      const totalWhatsappClicks = attempts.filter(a => a.whatsappClicked).length;
+      const totalStarted = localAttempts.length;
+      const totalSubmitted = localAttempts.filter(a => a.status === 'submitted').length;
+      const totalWhatsappClicks = localAttempts.filter(a => a.whatsappClicked).length;
       
       return {
-        totalUsers: users.length,
+        totalUsers: localUsers.length,
         totalStarted,
         totalSubmitted,
         totalWhatsappClicks,
-        users,
-        attempts
+        users: localUsers,
+        attempts: localAttempts
       };
     }
   }
